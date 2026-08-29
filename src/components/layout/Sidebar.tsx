@@ -10,6 +10,7 @@ import {
   MapPin,
   LogOut,
   ChevronRight,
+  Cpu,
 } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 
@@ -23,6 +24,7 @@ const navItems: NavItem[] = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Scraping Campaigns", href: "/campaigns", icon: Layers },
   { name: "AI Qualified Leads", href: "/leads", icon: Sparkles },
+  { name: "AI Config", href: "/ai-config", icon: Cpu },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 

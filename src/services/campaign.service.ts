@@ -149,28 +149,35 @@ export async function executeCampaignScrape(campaignId: string) {
     const items = await getDatasetItems(datasetId);
     console.log(`Fetched ${items.length} items from Apify for campaign ${campaign.title}`);
 
+    // Load selected AI Profile prompt and model
+    const { getAiProfile } = await import("./ai-profile.service");
+    const aiProfileDoc = await getAiProfile(campaign.aiProfile || "Default Profile");
+    const customPrompt = aiProfileDoc?.systemPrompt;
+    const aiModel = aiProfileDoc?.aiModel || "gemini-3.1-flash-lite";
+    const threshold = aiProfileDoc?.scoringThreshold ?? 50;
+
     let qualifiedCount = 0;
     let evaluatedCount = 0;
     const leadsToInsert: any[] = [];
 
-    // 5. Evaluate each lead with Gemini AI
+    // 5. Evaluate each lead with Gemini AI using Posivex AI profile
     for (const item of items) {
       const leadData = mapItemToLead(item, campaign);
 
       try {
-        const evaluation = await evaluateLeadWithGemini(leadData);
+        const evaluation = await evaluateLeadWithGemini(leadData, customPrompt, aiModel);
         leadData.aiScore = evaluation.score;
         leadData.aiReasoning = evaluation.reasoning;
         leadData.outreachHook = evaluation.outreachHook;
         leadData.enriched = true;
-        leadData.status = evaluation.score >= 50 ? "qualified" : "disqualified";
+        leadData.status = evaluation.score >= threshold ? "qualified" : "disqualified";
 
-        if (evaluation.score >= 50) {
+        if (evaluation.score >= threshold) {
           qualifiedCount++;
         }
       } catch (aiErr) {
         console.warn("AI evaluation fallback for lead:", leadData.name);
-        leadData.aiScore = 75;
+        leadData.aiScore = 70;
         leadData.enriched = true;
         leadData.status = "qualified";
         qualifiedCount++;

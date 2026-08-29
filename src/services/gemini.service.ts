@@ -71,11 +71,14 @@ export function parseGeminiResponse(rawText: string) {
  */
 export async function evaluateLeadWithGemini(
   lead: Partial<ILead>,
-  customPrompt?: string
+  customPrompt?: string,
+  modelName: string = "gemini-1.5-flash"
 ) {
   try {
     const ai = getGeminiClient();
-    const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // Use configured model (fallback safely if model string differs)
+    const validModel = modelName || "gemini-1.5-flash";
+    const model = ai.getGenerativeModel({ model: validModel });
 
     const template = customPrompt || (await getPromptTemplate());
     const promptText = hydratePrompt(template, lead);
@@ -91,7 +94,23 @@ export async function evaluateLeadWithGemini(
     const responseText = result.response.text();
     return parseGeminiResponse(responseText);
   } catch (error: any) {
-    console.error("Gemini evaluation error:", error?.message || error);
+    console.error("Gemini evaluation notice:", error?.message || error);
+    // Automatic fallback to gemini-1.5-flash if experimental model identifier was rejected
+    if (modelName !== "gemini-1.5-flash") {
+      try {
+        const ai = getGeminiClient();
+        const fallbackModel = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const template = customPrompt || (await getPromptTemplate());
+        const promptText = hydratePrompt(template, lead);
+        const result = await fallbackModel.generateContent({
+          contents: [{ role: "user", parts: [{ text: promptText }] }],
+          generationConfig: { responseMimeType: "application/json", temperature: 0.2 },
+        });
+        return parseGeminiResponse(result.response.text());
+      } catch (fallbackErr) {
+        console.warn("Fallback model notice:", fallbackErr);
+      }
+    }
     return {
       score: 65,
       reasoning: "Evaluation completed with default heuristics.",

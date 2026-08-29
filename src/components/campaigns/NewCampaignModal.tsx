@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
-import { X, Rocket, MapPin, Sparkles, AlertCircle, Loader2 } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { X, Rocket, MapPin, Sparkles, AlertCircle, Loader2, Cpu } from "lucide-react";
+import { IAiProfile } from "@/models/AiProfile";
 
 interface NewCampaignModalProps {
   isOpen: boolean;
@@ -19,8 +20,25 @@ export default function NewCampaignModal({
   const [location, setLocation] = useState("USA");
   const [country, setCountry] = useState("us");
   const [limit, setLimit] = useState(50);
+  const [selectedProfile, setSelectedProfile] = useState("Default Profile");
+  const [profiles, setProfiles] = useState<IAiProfile[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (isOpen) {
+      fetch("/api/ai-profiles")
+        .then((res) => res.json())
+        .then((json) => {
+          if (json.success && json.data) {
+            setProfiles(json.data);
+            const def = json.data.find((p: IAiProfile) => p.isDefault);
+            if (def) setSelectedProfile(def.name);
+          }
+        })
+        .catch((e) => console.error(e));
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -45,7 +63,7 @@ export default function NewCampaignModal({
           country,
           limit: Number(limit),
           platform: "Google Maps",
-          aiProfile: "Default Profile",
+          aiProfile: selectedProfile,
         }),
       });
 
@@ -79,7 +97,7 @@ export default function NewCampaignModal({
             </div>
             <div>
               <h3 className="text-lg font-bold text-white">Launch Scraping Campaign</h3>
-              <p className="text-xs text-slate-400">Target Google Maps businesses & qualify with Gemini</p>
+              <p className="text-xs text-slate-400">Target Google Maps businesses &amp; qualify with Gemini</p>
             </div>
           </div>
           <button
@@ -180,12 +198,19 @@ export default function NewCampaignModal({
 
             <div>
               <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-                Platform Source
+                AI Evaluation Profile
               </label>
-              <div className="w-full px-4 py-2.5 rounded-xl bg-[#171c35] border border-[#252d54] text-emerald-400 font-semibold text-sm flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                <span>Google Maps</span>
-              </div>
+              <select
+                value={selectedProfile}
+                onChange={(e) => setSelectedProfile(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl bg-[#0a0d1b] border border-[#21284d] focus:border-indigo-500 focus:outline-none text-indigo-300 text-sm font-semibold truncate"
+              >
+                {profiles.map((p) => (
+                  <option key={p._id.toString()} value={p.name}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
